@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Versuz Radio</title>
+  <style>
+    :root{
+      --bg:#0c0f1a;
+      --bg2:#14182a;
+      --card:#0b0d16;
+      --line:#6e4b32;
+      --text:#f6f0eb;
+      --muted:#bdb8c9;
+      --accent:#f49b5a;
+      --pill:#22253a;
+      --blue:#6d8cff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#0c0f1a,#0a0d17);
+      color:var(--text);
+      font-family:Inter,Arial,sans-serif;
+    }
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      padding:20px 28px 10px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .brand h1{
+      margin:0;
+      color:var(--accent);
+      font-size:32px;
+      letter-spacing:.02em;
+    }
+    .brand p{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:14px;
+    }
+    nav{
+      display:flex;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+    nav a{
+      text-decoration:none;
+      color:var(--text);
+      background:#1a1d2d;
+      border:1px solid rgba(255,255,255,.1);
+      padding:16px 24px;
+      border-radius:999px;
+      font-weight:700;
+    }
+    .wrap{
+      padding:24px;
+    }
+    .hero{
+      border:1px solid var(--line);
+      border-radius:28px;
+      padding:24px;
+      background:rgba(0,0,0,.18);
+    }
+    .hero-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:20px;
+      flex-wrap:wrap;
+    }
+    .play-block{
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+      min-width:260px;
+    }
+    .play-btn{
+      width:64px;
+      height:64px;
+      border:0;
+      border-radius:50%;
+      background:linear-gradient(180deg,#ff9c61,#e77948);
+      color:#fff;
+      font-size:26px;
+      cursor:pointer;
+      box-shadow:0 10px 25px rgba(231,121,72,.25);
+    }
+    .volume{
+      width:230px;
+    }
+    .center-pill,.status-pill,.program-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      border-radius:999px;
+      padding:12px 18px;
+      background:#07090f;
+      color:var(--text);
+      font-weight:700;
+    }
+    .meta-row{
+      margin-top:22px;
+      border-top:1px solid rgba(244,155,90,.25);
+      padding-top:18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:20px;
+      flex-wrap:wrap;
+    }
+    .track{
+      font-size:18px;
+      font-weight:800;
+    }
+    .sub{
+      color:var(--muted);
+      font-size:14px;
+      margin-top:6px;
+    }
+    .now-playing{
+      margin-top:12px;
+      display:inline-flex;
+      gap:12px;
+      align-items:center;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      padding:12px 18px;
+      color:#fff;
+    }
+    .now-playing strong{
+      font-size:12px;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      color:#d4cedb;
+    }
+    .admin{
+      margin-top:48px;
+      background:#111423;
+      border-radius:28px;
+      padding:24px;
+    }
+    .admin h2{
+      margin:0 0 18px;
+      font-size:26px;
+    }
+    .panel-title{
+      font-size:18px;
+      font-weight:800;
+      margin-bottom:14px;
+    }
+    label{
+      display:block;
+      margin:14px 0 8px;
+      color:#f2edf9;
+      font-size:15px;
+    }
+    input,select{
+      width:100%;
+      border:1px solid rgba(255,255,255,.14);
+      background:#202437;
+      color:#fff;
+      padding:16px 18px;
+      border-radius:18px;
+      font-size:15px;
+    }
+    .save-btn{
+      margin-top:16px;
+      background:#6e6da6;
+      border:0;
+      color:#fff;
+      padding:14px 18px;
+      border-radius:999px;
+      font-weight:800;
+    }
+    .warn{
+      margin-top:10px;
+      color:#c7bba4;
+      font-size:14px;
+    }
+    @media (max-width: 900px){
+      header{flex-direction:column;gap:18px}
+      .hero-top,.meta-row{align-items:flex-start}
+      nav a{padding:12px 18px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>VERSUZ RADIO</h1>
+      <p>live • metadata • slimme ads • proxy ready</p>
+    </div>
+
+    <nav>
+      <a href="#">🏠 HOME</a>
+      <a href="#">🗓️ PROGRAMMA'S</a>
+      <a href="#">📰 NIEUWS</a>
+      <a href="#">📞 CONTACT</a>
+      <a href="#">🔐 ADMIN</a>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-top">
+        <div class="play-block">
+          <button class="play-btn" id="playBtn">▶</button>
+          <input class="volume" id="volume" type="range" min="0" max="1" step="0.05" value="0.85" />
+        </div>
+
+        <div class="center-pill">🎵 🔁 <span id="status">live metadata laden...</span></div>
+
+        <div class="status-pill">📢 ads actief</div>
+      </div>
+
+      <div class="meta-row">
+        <div>
+          <div class="track">📼 Live track: <span id="liveTrack">Metadata laden...</span></div>
+          <div class="sub">🎧 Klik PLAY — metadata elke seconde via proxy.</div>
+          <div class="now-playing">
+            <strong>Now playing</strong>
+            <span id="currentSong">Metadata laden...</span>
+          </div>
+        </div>
+
+        <div class="program-pill">📺 Huidig programma: Vintage Thursday</div>
+      </div>
+    </section>
+
+    <section class="admin">
+      <h2>🛠️ Admin dashboard (ingelogd)</h2>
+      <div class="panel-title">🎵 Stream & metadata bron</div>
+
+      <label>Stream URL (direct of via proxy):</label>
+      <input type="text" value="https://212.84.160.3:11609/stream" readonly />
+
+      <label>Metadata basis URL (proxy):</label>
+      <input type="text" value="/api/metadata" readonly />
+
+      <label>Metadata type:</label>
+      <select disabled>
+        <option selected>Plain text via proxy</option>
+      </select>
+
+      <button class="save-btn" type="button">💾 Opslaan & Testen</button>
+      <div class="warn">Deze versie gebruikt een EdgeOne proxy zodat metadata kan werken zonder aanpassingen op de streamserver van de derde partij.</div>
+    </section>
+  </div>
+
+  <audio id="radio" preload="none"></audio>
+
+  <script>
+    (function () {
+      const STREAM_URL = "https://212.84.160.3:11609/stream";
+      const METADATA_URL = "/api/metadata";
+      const POLL_MS = 1000;
+
+      const audio = document.getElementById("radio");
+      const playBtn = document.getElementById("playBtn");
+      const volume = document.getElementById("volume");
+      const currentSong = document.getElementById("currentSong");
+      const liveTrack = document.getElementById("liveTrack");
+      const status = document.getElementById("status");
+
+      audio.src = STREAM_URL;
+      audio.volume = parseFloat(volume.value);
+
+      volume.addEventListener("input", () => {
+        audio.volume = parseFloat(volume.value);
+      });
+
+      playBtn.addEventListener("click", async () => {
+        try {
+          if (audio.paused) {
+            await audio.play();
+            playBtn.textContent = "⏸";
+            status.textContent = "stream speelt";
+          } else {
+            audio.pause();
+            playBtn.textContent = "▶";
+            status.textContent = "stream gepauzeerd";
+          }
+        } catch (e) {
+          status.textContent = "stream kon niet starten";
+        }
+      });
+
+      function setSong(text) {
+        const value = String(text || "").trim() || "Metadata niet beschikbaar";
+        currentSong.textContent = value;
+        liveTrack.textContent = value;
+      }
+
+      async function refreshMetadata() {
+        try {
+          const res = await fetch(METADATA_URL + "?_ts=" + Date.now(), { cache: "no-store" });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const text = await res.text();
+          setSong(text);
+          if (!audio.paused) {
+            status.textContent = "stream speelt • metadata live";
+          } else {
+            status.textContent = "metadata live";
+          }
+        } catch (e) {
+          setSong("Metadata niet beschikbaar");
+          status.textContent = "metadata proxy mislukt";
+        }
+      }
+
+      refreshMetadata();
+      setInterval(refreshMetadata, POLL_MS);
+    })();
+  </script>
+</body>
+</html>
