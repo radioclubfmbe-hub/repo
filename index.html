@@ -58,7 +58,7 @@
             <span>📻 <strong>Live track:</strong> <span id="liveSongTitle">-</span> <button id="refreshMetaBtn" class="small-btn" style="margin-left:8px;">🔄</button></span>
             <span class="program-badge">📺 <strong>Huidig programma:</strong> <span id="currentProgramName">-</span></span>
         </div>
-        <div class="warning">🎧 Klik PLAY – metadata elke 10 sec. Werkt stream niet via HTTPS? Gebruik proxy URL in admin.</div>
+        <div class="warning">🎧 Klik PLAY – metadata elke seconde via proxy.</div>
     </div>
 
     <div id="homePanel" class="panel active-panel"><h2>🎧 Welkom bij Versuz Radio</h2><p>De ultieme mix van dance, classics & exclusieve shows.</p><div style="margin:1.8rem 0;"><h3>🔥 Laatste updates</h3><div id="homeNewsPreview" class="news-grid"></div></div></div>
@@ -116,7 +116,13 @@
         currentStreamUrl = localStorage.getItem(STORAGE.streamUrl) || "https://212.84.160.3:11609/stream";
         let savedMeta = localStorage.getItem(STORAGE.metadataSource);
         if(savedMeta) metadataConfig = JSON.parse(savedMeta);
-        else metadataConfig = { baseUrl: "http://85.215.152.155:8000", type: "shoutcast" };
+        else metadataConfig = { baseUrl: "/api/metadata", type: "proxy" };
+        if (!metadataConfig.baseUrl || metadataConfig.baseUrl.includes("212.84.160.3") || metadataConfig.baseUrl.includes("85.215.152.155")) {
+            metadataConfig = { baseUrl: "/api/metadata", type: "proxy" };
+        }
+        if (!currentStreamUrl || currentStreamUrl.includes("85.215.152.155")) {
+            currentStreamUrl = "https://212.84.160.3:11609/stream";
+        }
         if(newsArticles.length === 0) {
             newsArticles = [{ id: "n1", title: "🎉 Versuz Radio 2 jaar!", content: "Speciale uitzending 15 juni met live dj's.", date: "2026-05-20", imageData: "" },
                             { id: "n2", title: "Nieuwe programmadirecteur", content: "Kevin van den Berg zorgt voor frisse sound.", date: "2026-05-18", imageData: "" }];
@@ -421,7 +427,30 @@
         document.getElementById("logoutAdminBtn")?.addEventListener("click", () => { adminLogged = false; renderAdminTools(); });
     }
     
+    function normalizeSavedMetadataSource() {
+        try {
+            const saved = localStorage.getItem(STORAGE.metadataSource);
+            if (!saved) {
+                localStorage.setItem(STORAGE.metadataSource, JSON.stringify({ baseUrl: "/api/metadata", type: "proxy" }));
+                return;
+            }
+            const parsed = JSON.parse(saved);
+            if (!parsed.baseUrl || parsed.baseUrl.includes("212.84.160.3") || parsed.baseUrl.includes("85.215.152.155")) {
+                localStorage.setItem(STORAGE.metadataSource, JSON.stringify({ baseUrl: "/api/metadata", type: "proxy" }));
+            }
+        } catch (e) {
+            localStorage.setItem(STORAGE.metadataSource, JSON.stringify({ baseUrl: "/api/metadata", type: "proxy" }));
+        }
+        try {
+            const savedStream = localStorage.getItem(STORAGE.streamUrl);
+            if (!savedStream || savedStream.includes("85.215.152.155")) {
+                localStorage.setItem(STORAGE.streamUrl, "https://212.84.160.3:11609/stream");
+            }
+        } catch (e) {}
+    }
+
     function init() {
+        normalizeSavedMetadataSource();
         loadAllData();
         const datePicker = document.getElementById("scheduleDate");
         if(datePicker) { let today = new Date().toISOString().slice(0,10); datePicker.value = today; datePicker.addEventListener("change", () => renderSchedule(datePicker.value)); renderSchedule(today); }
