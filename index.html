@@ -112,6 +112,7 @@
         overrides = JSON.parse(localStorage.getItem(STORAGE.overrides) || "[]");
         newsArticles = JSON.parse(localStorage.getItem(STORAGE.news) || "[]");
         adRules = JSON.parse(localStorage.getItem(STORAGE.adRules) || "[]");
+        adRules = adRules.map(normalizeAdRule);
         metaKeywordQuotas = JSON.parse(localStorage.getItem(STORAGE.metaKeywordQuotas) || '{ "adocount-": 2, "headlines": 3 }');
         currentStreamUrl = localStorage.getItem(STORAGE.streamUrl) || "https://212.84.160.3:11609/stream";
         let savedMeta = localStorage.getItem(STORAGE.metadataSource);
@@ -136,6 +137,221 @@
     function saveMetaQuotas() { localStorage.setItem(STORAGE.metaKeywordQuotas, JSON.stringify(metaKeywordQuotas)); }
     function saveStreamUrl(url) { localStorage.setItem(STORAGE.streamUrl, url); currentStreamUrl = url; }
     function saveMetadataConfig(config) { localStorage.setItem(STORAGE.metadataSource, JSON.stringify(config)); metadataConfig = config; }
+
+    function normalizeAdRule(ad) {
+        return {
+            id: ad.id || ("ad" + Date.now() + Math.floor(Math.random()*1000)),
+            name: ad.name || "Nieuwe spot",
+            advertiser: ad.advertiser || "Onbekende adverteerder",
+            type: ad.type || "midroll",
+            audioUrl: ad.audioUrl || "",
+            audioMode: ad.audioMode || (ad.audioUrl ? "url" : "upload"),
+            hasUploadedAudio: !!ad.hasUploadedAudio,
+            startDateTime: ad.startDateTime || new Date().toISOString().slice(0,16),
+            endDateTime: ad.endDateTime || "2099-12-31T23:59",
+            hourStart: ad.hourStart ?? "",
+            hourEnd: ad.hourEnd ?? "",
+            maxPlays: Number(ad.maxPlays ?? 999999),
+            currentPlays: Number(ad.currentPlays ?? 0),
+            maxPerDay: Number(ad.maxPerDay ?? 999),
+            playsToday: Number(ad.playsToday ?? 0),
+            lastPlayedAt: ad.lastPlayedAt || "",
+            lastPlayedDate: ad.lastPlayedDate || "",
+            enabled: ad.enabled !== false,
+            triggerType: ad.triggerType || "metadata",
+            triggerValue: ad.triggerValue || "",
+            notes: ad.notes || ""
+        };
+    }
+
+    function openAdsAudioDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open("versuzAdsDB", 1);
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains("audio")) db.createObjectStore("audio", { keyPath: "id" });
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function saveAdAudioToDB(id, dataUrl) {
+        const db = await openAdsAudioDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("audio", "readwrite");
+            tx.objectStore("audio").put({ id, dataUrl });
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function getAdAudioFromDB(id) {
+        const db = await openAdsAudioDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("audio", "readonly");
+            const req = tx.objectStore("audio").get(id);
+            req.onsuccess = () => resolve(req.result ? req.result.dataUrl : null);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function deleteAdAudioFromDB(id) {
+        const db = await openAdsAudioDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("audio", "readwrite");
+            tx.objectStore("audio").delete(id);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function todayKey() { return new Date().toISOString().slice(0,10); }
+
+    function resetDailyAdCounters() {
+        const today = todayKey();
+        let changed = false;
+        adRules = adRules.map(ad => {
+            ad = normalizeAdRule(ad);
+            if (ad.lastPlayedDate && ad.lastPlayedDate !== today && ad.playsToday !== 0) { ad.playsToday = 0; changed = true; }
+            return ad;
+        });
+        if (changed) saveAdRules();
+    }
+
+    function parseHour(v) {
+        if (v === "" || v === null || v === undefined) return null;
+        const n = parseInt(v, 10);
+        return Number.isNaN(n) ? null : n;
+    }
+
+    function isAdAllowedAtThisHour(ad, now = new Date()) {
+        const start = parseHour(ad.hourStart), end = parseHour(ad.hourEnd);
+        if (start === null || end === null) return true;
+        const h = now.getHours();
+        if (start === end) return true;
+        if (start < end) return h >= start && h < end;
+        return h >= start || h < end;
+    }
+
+    function isAdActiveNow(ad, now = new Date()) {
+        ad = normalizeAdRule(ad);
+        if (!ad.enabled) return false;
+        if (ad.currentPlays >= ad.maxPlays) return false;
+        if (ad.playsToday >= ad.maxPerDay) return false;
+        if (!isAdAllowedAtThisHour(ad, now)) return false;
+        return new Date(ad.startDateTime) <= now && new Date(ad.endDateTime) >= now;
+    }
+
+    function metadataMatches(ad, songText) {
+        if (ad.triggerType === "datetime") return true;
+        if (ad.triggerType !== "metadata") return true;
+        if (!songText) return false;
+        const hay = String(songText).toLowerCase();
+        const triggers = String(ad.triggerValue || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+        if (!triggers.length) return /adcount\s*-\s*\d+/i.test(hay);
+        return triggers.some(t => hay.includes(t));
+    }
+
+    function parseAdCount(songText) {
+        const m = String(songText || "").match(/adcount\s*-\s*(\d+)/i);
+        const n = m ? parseInt(m[1], 10) : 1;
+        return Math.max(1, Math.min(5, Number.isNaN(n) ? 1 : n));
+    }
+
+    function chooseAdsForBreak(type, songText, desiredCount = 1) {
+        resetDailyAdCounters();
+        const now = new Date();
+        let candidates = adRules.map(normalizeAdRule).filter(ad => {
+            const typeOk = ad.type === type || ad.type === "both";
+            const triggerOk = type === "midroll" ? metadataMatches(ad, songText) : true;
+            return typeOk && triggerOk && isAdActiveNow(ad, now);
+        });
+        candidates.sort((a, b) => {
+            const byToday = a.playsToday - b.playsToday; if (byToday !== 0) return byToday;
+            const byTotal = a.currentPlays - b.currentPlays; if (byTotal !== 0) return byTotal;
+            return (a.lastPlayedAt || "").localeCompare(b.lastPlayedAt || "");
+        });
+        const picked = [];
+        const usedAdvertisers = new Set();
+        for (const ad of candidates) {
+            if (picked.find(x => x.id === ad.id)) continue;
+            if (desiredCount > 1 && usedAdvertisers.has(ad.advertiser) && candidates.some(c => !usedAdvertisers.has(c.advertiser) && !picked.find(x => x.id === c.id))) continue;
+            picked.push(ad);
+            usedAdvertisers.add(ad.advertiser);
+            if (picked.length >= desiredCount) break;
+        }
+        if (picked.length < desiredCount) {
+            for (const ad of candidates) {
+                if (!picked.find(x => x.id === ad.id)) picked.push(ad);
+                if (picked.length >= desiredCount) break;
+            }
+        }
+        return picked.slice(0, desiredCount);
+    }
+
+    function recordAdPlay(ad) {
+        const today = todayKey();
+        adRules = adRules.map(item => {
+            item = normalizeAdRule(item);
+            if (item.id === ad.id) {
+                if (item.lastPlayedDate !== today) item.playsToday = 0;
+                item.currentPlays += 1;
+                item.playsToday += 1;
+                item.lastPlayedDate = today;
+                item.lastPlayedAt = new Date().toISOString();
+            }
+            return item;
+        });
+        saveAdRules();
+    }
+
+    async function resolveAdAudioSource(ad) {
+        if (ad.audioMode === "upload") return await getAdAudioFromDB(ad.id);
+        return ad.audioUrl || "";
+    }
+
+    function playSingleAdSource(src) {
+        return new Promise((resolve, reject) => {
+            adAudio.pause();
+            adAudio.src = src;
+            adAudio.onended = () => { adAudio.onended = null; resolve(true); };
+            adAudio.onerror = () => { adAudio.onerror = null; reject(new Error("ad audio error")); };
+            adAudio.play().catch(reject);
+        });
+    }
+
+    async function playAdBreakSequence(ads, afterDone) {
+        if (!ads.length || currentAdPlaying) return false;
+        currentAdPlaying = true;
+        const wasPlaying = isPlaying;
+        mainAudio.pause();
+        try {
+            for (const ad of ads) {
+                const src = await resolveAdAudioSource(ad);
+                if (!src) continue;
+                recordAdPlay(ad);
+                await playSingleAdSource(src);
+            }
+        } catch (e) {
+            console.warn("Advertentie afspelen mislukt", e);
+        }
+        currentAdPlaying = false;
+        renderAdListUI();
+        renderAdvertiserStatsUI();
+        if (wasPlaying) playMain();
+        if (afterDone) afterDone();
+        return true;
+    }
     
     // ========== AUDIO & AD ENGINE ==========
     let mainAudio = new Audio(); let adAudio = new Audio();
@@ -160,56 +376,28 @@
     playBtn.addEventListener("click", () => { if(isPlaying) pauseMain(); else { if(!prerollDone) attemptPreroll(); else playMain(); } });
     
     function attemptPreroll() {
-        const now = new Date();
-        const eligible = adRules.filter(r => r.type === "preroll" && r.enabled && r.currentPlays < r.maxPlays && new Date(r.startDateTime) <= now && new Date(r.endDateTime) >= now);
-        if(eligible.length && !currentAdPlaying) {
-            let ad = eligible[0];
-            ad.currentPlays++; saveAdRules();
-            playAdAudio(ad.audioUrl, () => { prerollDone = true; playMain(); renderAdListUI(); });
+        const selected = chooseAdsForBreak("preroll", currentSong, 1);
+        if (selected.length) {
+            playAdBreakSequence(selected, () => { prerollDone = true; renderAdListUI(); renderAdvertiserStatsUI(); });
             return true;
         }
-        prerollDone = true; playMain(); return false;
+        prerollDone = true;
+        playMain();
+        return false;
     }
-    
+
     function playAdAudio(url, onEnd) {
-        if(currentAdPlaying) return;
-        currentAdPlaying = true;
-        let wasPlaying = isPlaying;
-        if(wasPlaying) { mainAudio.pause(); resumeAfterAd = true; }
-        adAudio.src = url; adAudio.play().catch(e=>console.warn);
-        adAudio.onended = () => { currentAdPlaying = false; if(resumeAfterAd && wasPlaying) { playMain(); resumeAfterAd = false; } if(onEnd) onEnd(); adAudio.onended = null; };
+        playSingleAdSource(url).then(() => { if (onEnd) onEnd(); }).catch(() => { if (onEnd) onEnd(); });
     }
-    
+
     function evaluateMidrollsFromSong(songText) {
-        if(currentAdPlaying || !isPlaying) return;
-        const now = new Date();
-        let availableMidrolls = adRules.filter(r => r.type === "midroll" && r.enabled && r.currentPlays < r.maxPlays && new Date(r.startDateTime) <= now && new Date(r.endDateTime) >= now);
-        if(availableMidrolls.length === 0) return;
-        let triggeredAd = null;
-        for(let ad of availableMidrolls) {
-            if(ad.triggerType === "metadata" && ad.triggerValue) {
-                let keyword = ad.triggerValue.toLowerCase();
-                if(songText.toLowerCase().includes(keyword)) {
-                    let quota = metaKeywordQuotas[keyword] || 0;
-                    let used = keywordSpotUsage[keyword] || 0;
-                    if(quota === 0 || used < quota) {
-                        triggeredAd = ad;
-                        keywordSpotUsage[keyword] = used + 1;
-                        break;
-                    }
-                }
-            } else if(ad.triggerType === "datetime" && ad.triggerValue) {
-                if(new Date(ad.triggerValue) <= now) { triggeredAd = ad; break; }
-            }
-        }
-        if(triggeredAd) {
-            triggeredAd.currentPlays++;
-            saveAdRules();
-            playAdAudio(triggeredAd.audioUrl, () => { renderAdListUI(); });
-        }
+        if (currentAdPlaying || !isPlaying) return;
+        const desiredCount = parseAdCount(songText);
+        const selected = chooseAdsForBreak("midroll", songText, desiredCount);
+        if (!selected.length) return;
+        playAdBreakSequence(selected, () => { renderAdListUI(); renderAdvertiserStatsUI(); });
     }
-    
-    // ========== METADATA OPHALEN ==========
+
     async function fetchMetadata() {
         let song = null;
         try {
@@ -340,7 +528,7 @@
                 <div class="admin-form"><h3>📅 Weekprogramma bewerken</h3><div id="weeklyScheduleEditor"></div><button id="saveWeeklyBtn" class="small-btn">💾 Opslaan</button></div>
                 <div class="admin-form"><h3>📌 Vervangingen (specifieke datum)</h3><input type="date" id="ovDate"><input type="text" id="ovStart" placeholder="Start (vb 14:00)"><input type="text" id="ovEnd" placeholder="Eind"><input type="text" id="ovTitle" placeholder="Programma"><textarea id="ovDesc" rows="1"></textarea><button id="addOvBtn" class="small-btn">➕ Toevoegen</button><div id="overrideListAdmin"></div></div>
                 <div class="admin-form"><h3>📰 Nieuws (met afbeelding upload)</h3><input type="text" id="newsTitleInput" placeholder="Titel"><textarea id="newsContentInput" rows="2" placeholder="Inhoud"></textarea><input type="file" id="newsImageUpload" accept="image/*"><div class="flex-row"><button id="addNewsAdminBtn" class="small-btn">➕ Toevoegen</button><select id="newsSelectDelete"></select><button id="delNewsBtn" class="small-btn">🗑️ Verwijder</button></div><div id="newsCountAdmin"></div></div>
-                <div class="admin-form"><h3>🎯 Advertenties (preroll/midroll) met telling & planning</h3><input type="text" id="adNameInput" placeholder="Naam"><select id="adTypeSelect"><option value="preroll">Preroll</option><option value="midroll">Midroll</option></select><input type="text" id="adUrlInput" placeholder="Audio URL (mp3)"><input type="datetime-local" id="adStart"><input type="datetime-local" id="adEnd"><input type="number" id="adMaxPlays" placeholder="Max aantal keer" value="5"><select id="triggerTypeSelect"><option value="metadata">Metadata keyword</option><option value="datetime">Vaste datum/tijd</option></select><input type="text" id="triggerValInput" placeholder="Keyword of datum"><button id="addAdRuleBtn" class="small-btn">➕ Ad toevoegen</button><div id="adRulesListAdmin"></div></div>
+                <div class="admin-form"><h3>📢 Advertenties & spotplanning</h3><input type="text" id="adNameInput" placeholder="Spotnaam"><input type="text" id="advertiserInput" placeholder="Adverteerder"><select id="adTypeSelect"><option value="preroll">Preroll</option><option value="midroll">Midroll</option><option value="both">Beide</option></select><select id="triggerTypeSelect"><option value="metadata">Metadata-trigger</option><option value="datetime">Vaste datum/tijd</option></select><input type="text" id="triggerValInput" placeholder="Metadata keyword(s), vb ADCOUNT-2,SPONSOR-A"><input type="text" id="adUrlInput" placeholder="Audio URL mp3 (optioneel)"><input type="file" id="adFileUpload" accept="audio/mpeg,audio/mp3,audio/*"><input type="datetime-local" id="adStart"><input type="datetime-local" id="adEnd"><div class="flex-row"><label>Startuur <input type="number" id="adHourStart" min="0" max="23" placeholder="0" style="width:90px"></label><label>Einduur <input type="number" id="adHourEnd" min="0" max="23" placeholder="24" style="width:90px"></label><label>Max per dag <input type="number" id="adMaxPerDay" value="4" min="1" style="width:110px"></label><label>Max totaal <input type="number" id="adMaxPlays" value="50" min="1" style="width:110px"></label></div><textarea id="adNotesInput" rows="2" placeholder="Extra notities / campagne-info"></textarea><button id="addAdRuleBtn" class="small-btn">Spot toevoegen</button><div id="adRulesListAdmin"></div><h3 style="margin-top:1rem;">📊 Per adverteerder</h3><div id="advertiserStatsAdmin"></div></div>
                 <div class="admin-form"><h3>🔑 Metadata quota per keyword (bv. {"adocount-":2,"headlines":3})</h3><textarea id="quotasEditor" rows="2">${JSON.stringify(metaKeywordQuotas, null, 2)}</textarea><button id="saveQuotasBtn" class="small-btn">Opslaan</button></div>
                 <div class="admin-form"><h3>🎵 Handmatige metadata (fallback)</h3><input type="text" id="manualMetaInput" placeholder="Titel artiest - nummer"><button id="setManualMetaBtn" class="small-btn">Zet handmatig</button></div>
                 <button id="resetDemoBtn" class="small-btn" style="background:#7a2e2e;">🔄 Reset alle data</button><button id="logoutAdminBtn" class="small-btn">🚪 Uitloggen</button>
@@ -350,6 +538,7 @@
         renderWeeklyEditor();
         renderOverridesListUI();
         renderAdListUI();
+        renderAdvertiserStatsUI();
         renderNews();
     }
     
@@ -401,10 +590,48 @@
     function renderAdListUI() {
         const container = document.getElementById("adRulesListAdmin");
         if(!container) return;
-        container.innerHTML = adRules.map((r,i) => `<div style="border-left:3px solid #ff8855; margin:5px; padding:5px;"><b>${r.name}</b> (${r.type}) | plays: ${r.currentPlays}/${r.maxPlays} | geldig: ${r.startDateTime} tot ${r.endDateTime}<br>trigger: ${r.triggerType}=${r.triggerValue}<br>🔊 ${r.audioUrl.substring(0,50)} <button data-adidx="${i}" class="small-btn">verwijder</button></div>`).join("");
-        document.querySelectorAll("[data-adidx]").forEach(btn => { btn.addEventListener("click", (e) => { let idx = parseInt(btn.getAttribute("data-adidx")); adRules.splice(idx,1); saveAdRules(); renderAdListUI(); }); });
+        resetDailyAdCounters();
+        container.innerHTML = adRules.map((r, i) => {
+            r = normalizeAdRule(r);
+            return `<div style="border-left:3px solid #ff8855; margin:6px 0; padding:8px; border-radius:0.7rem; background:#13182a;">
+                <b>${r.name}</b> — ${r.advertiser}<br>
+                type: ${r.type} • metadata: ${r.triggerType}:${r.triggerValue || '-'}<br>
+                uur: ${r.hourStart === '' ? 'altijd' : r.hourStart + ':00'} - ${r.hourEnd === '' ? 'altijd' : r.hourEnd + ':00'}<br>
+                vandaag: ${r.playsToday}/${r.maxPerDay} • totaal: ${r.currentPlays}/${r.maxPlays}<br>
+                periode: ${r.startDateTime} tot ${r.endDateTime}<br>
+                audio: ${r.audioMode === 'upload' ? 'upload in browser' : (r.audioUrl || '-')}<br>
+                <button data-adidx="${i}" class="small-btn">verwijder</button>
+            </div>`;
+        }).join("");
+        document.querySelectorAll("[data-adidx]").forEach(btn => btn.addEventListener("click", async () => {
+            let idx = parseInt(btn.getAttribute("data-adidx"));
+            const ad = normalizeAdRule(adRules[idx]);
+            adRules.splice(idx, 1);
+            saveAdRules();
+            if (ad.audioMode === "upload") await deleteAdAudioFromDB(ad.id).catch(() => null);
+            renderAdListUI();
+            renderAdvertiserStatsUI();
+        }));
     }
-    
+
+    function renderAdvertiserStatsUI() {
+        const container = document.getElementById("advertiserStatsAdmin");
+        if (!container) return;
+        const grouped = {};
+        adRules.map(normalizeAdRule).forEach(ad => {
+            if (!grouped[ad.advertiser]) grouped[ad.advertiser] = { spots: 0, today: 0, total: 0 };
+            grouped[ad.advertiser].spots += 1;
+            grouped[ad.advertiser].today += ad.playsToday;
+            grouped[ad.advertiser].total += ad.currentPlays;
+        });
+        const rows = Object.entries(grouped);
+        if (!rows.length) {
+            container.innerHTML = '<p class="warning">Nog geen adverteerders of spots toegevoegd.</p>';
+            return;
+        }
+        container.innerHTML = `<table><thead><tr><th>Adverteerder</th><th>Spots</th><th>Vandaag</th><th>Totaal</th></tr></thead><tbody>${rows.map(([name, v]) => `<tr><td>${name}</td><td>${v.spots}</td><td>${v.today}</td><td>${v.total}</td></tr>`).join('')}</tbody></table>`;
+    }
+
     function attachAdminEvents() {
         document.getElementById("saveStreamBtn")?.addEventListener("click", () => {
             let newUrl = document.getElementById("streamUrlInput").value;
@@ -416,18 +643,76 @@
             fetchMetadata();
             alert("Stream en metadata bron opgeslagen. Klik op play om te luisteren.");
         });
-        document.getElementById("saveWeeklyBtn")?.addEventListener("click", () => { saveWeeklySchedule(); alert("Weekprogramma opgeslagen"); let d = document.getElementById("scheduleDate")?.value; if(d) renderSchedule(d); });
-        document.getElementById("addOvBtn")?.addEventListener("click", () => { let date = document.getElementById("ovDate").value, start = document.getElementById("ovStart").value, end = document.getElementById("ovEnd").value, title = document.getElementById("ovTitle").value, desc = document.getElementById("ovDesc").value; if(!date||!start||!end||!title) return; overrides.push({ date, startTime:start, endTime:end, programTitle:title, desc }); saveOverrides(); renderOverridesListUI(); let d = document.getElementById("scheduleDate")?.value; if(d===date) renderSchedule(d); });
-        document.getElementById("addNewsAdminBtn")?.addEventListener("click", () => { let tit = document.getElementById("newsTitleInput").value, cont = document.getElementById("newsContentInput").value, file = document.getElementById("newsImageUpload").files[0]; if(!tit||!cont) return; let reader = new FileReader(); reader.onload = function(e) { newsArticles.push({ id: "n"+Date.now(), title: tit, content: cont, date: new Date().toISOString().slice(0,10), imageData: e.target.result }); saveNews(); renderNews(); renderAdminTools(); }; if(file) reader.readAsDataURL(file); else { newsArticles.push({ id: "n"+Date.now(), title: tit, content: cont, date: new Date().toISOString().slice(0,10), imageData: "" }); saveNews(); renderNews(); renderAdminTools(); } });
-        document.getElementById("delNewsBtn")?.addEventListener("click", () => { let sel = document.getElementById("newsSelectDelete").value; newsArticles = newsArticles.filter(n=> n.id !== sel); saveNews(); renderNews(); renderAdminTools(); });
-        document.getElementById("addAdRuleBtn")?.addEventListener("click", () => { let name = document.getElementById("adNameInput").value, type = document.getElementById("adTypeSelect").value, url = document.getElementById("adUrlInput").value, start = document.getElementById("adStart").value, end = document.getElementById("adEnd").value, max = parseInt(document.getElementById("adMaxPlays").value), trigType = document.getElementById("triggerTypeSelect").value, trigVal = document.getElementById("triggerValInput").value; if(!name||!url||!start||!end) return; adRules.push({ id:"ad"+Date.now(), name, type, audioUrl:url, startDateTime:start, endDateTime:end, maxPlays:max, currentPlays:0, enabled:true, triggerType:trigType, triggerValue:trigVal }); saveAdRules(); renderAdListUI(); });
-        document.getElementById("saveQuotasBtn")?.addEventListener("click", () => { try { let q = JSON.parse(document.getElementById("quotasEditor").value); metaKeywordQuotas = q; saveMetaQuotas(); alert("Quota opgeslagen"); } catch(e) { alert("Ongeldige JSON"); } });
-        document.getElementById("setManualMetaBtn")?.addEventListener("click", () => { let newMeta = document.getElementById("manualMetaInput").value; if(newMeta) { currentSong = newMeta; keywordSpotUsage = {}; document.getElementById("liveSongTitle").innerHTML = currentSong; document.getElementById("nowPlayingMeta").innerHTML = `🎵 ${currentSong.substring(0, 60)}`; evaluateMidrollsFromSong(currentSong); } });
+
+        document.getElementById("saveWeeklyBtn")?.addEventListener("click", () => {
+            saveWeeklySchedule();
+            alert("Weekprogramma opgeslagen");
+            let d = document.getElementById("scheduleDate")?.value;
+            if(d) renderSchedule(d);
+        });
+
+        document.getElementById("addOvBtn")?.addEventListener("click", () => {
+            let date = document.getElementById("ovDate").value, start = document.getElementById("ovStart").value, end = document.getElementById("ovEnd").value, title = document.getElementById("ovTitle").value, desc = document.getElementById("ovDesc").value;
+            if(!date || !start || !end || !title) return;
+            overrides.push({ date, startTime: start, endTime: end, programTitle: title, desc });
+            saveOverrides(); renderOverridesListUI();
+            let d = document.getElementById("scheduleDate")?.value; if(d===date) renderSchedule(d);
+        });
+
+        document.getElementById("addNewsAdminBtn")?.addEventListener("click", () => {
+            let tit = document.getElementById("newsTitleInput").value, cont = document.getElementById("newsContentInput").value, file = document.getElementById("newsImageUpload").files[0];
+            if(!tit || !cont) return;
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                newsArticles.push({ id: "n"+Date.now(), title: tit, content: cont, date: new Date().toISOString().slice(0,10), imageData: file ? e.target.result : "" });
+                saveNews(); renderNews(); renderAdminTools();
+            };
+            if(file) reader.readAsDataURL(file); else reader.onload({ target:{ result:"" } });
+        });
+
+        document.getElementById("delNewsBtn")?.addEventListener("click", () => {
+            let sel = document.getElementById("newsSelectDelete").value;
+            newsArticles = newsArticles.filter(n => n.id !== sel);
+            saveNews(); renderNews(); renderAdminTools();
+        });
+
+        document.getElementById("addAdRuleBtn")?.addEventListener("click", async () => {
+            let name = document.getElementById("adNameInput").value.trim();
+            let advertiser = document.getElementById("advertiserInput").value.trim();
+            let type = document.getElementById("adTypeSelect").value;
+            let triggerType = document.getElementById("triggerTypeSelect").value;
+            let triggerValue = document.getElementById("triggerValInput").value.trim();
+            let url = document.getElementById("adUrlInput").value.trim();
+            let file = document.getElementById("adFileUpload").files[0];
+            let start = document.getElementById("adStart").value;
+            let end = document.getElementById("adEnd").value;
+            let hourStart = document.getElementById("adHourStart").value;
+            let hourEnd = document.getElementById("adHourEnd").value;
+            let maxPerDay = parseInt(document.getElementById("adMaxPerDay").value || '4', 10);
+            let maxPlays = parseInt(document.getElementById("adMaxPlays").value || '50', 10);
+            let notes = document.getElementById("adNotesInput").value.trim();
+            if (!name || !advertiser || !start || !end) { alert("Vul minstens spotnaam, adverteerder, start en eind in."); return; }
+            if (!file && !url) { alert("Upload een mp3 of geef een audio URL in."); return; }
+            let ad = normalizeAdRule({ id: "ad" + Date.now(), name, advertiser, type, audioUrl: url, audioMode: file ? "upload" : "url", hasUploadedAudio: !!file, startDateTime: start, endDateTime: end, hourStart: hourStart === '' ? '' : String(hourStart), hourEnd: hourEnd === '' ? '' : String(hourEnd), maxPerDay, maxPlays, triggerType, triggerValue, notes, currentPlays: 0, playsToday: 0, enabled: true });
+            if (file) { const dataUrl = await readFileAsDataURL(file); await saveAdAudioToDB(ad.id, dataUrl); }
+            adRules.push(ad);
+            saveAdRules(); renderAdListUI(); renderAdvertiserStatsUI(); alert("Spot toegevoegd.");
+        });
+
+        document.getElementById("saveQuotasBtn")?.addEventListener("click", () => {
+            try { let q = JSON.parse(document.getElementById("quotasEditor").value); metaKeywordQuotas = q; saveMetaQuotas(); alert("Quota opgeslagen"); } catch(e) { alert("Ongeldige JSON"); }
+        });
+
+        document.getElementById("setManualMetaBtn")?.addEventListener("click", () => {
+            let newMeta = document.getElementById("manualMetaInput").value;
+            if(newMeta) { currentSong = newMeta; keywordSpotUsage = {}; document.getElementById("liveSongTitle").innerHTML = currentSong; document.getElementById("nowPlayingMeta").innerHTML = currentSong.substring(0,60); evaluateMidrollsFromSong(currentSong); }
+        });
+
         document.getElementById("resetDemoBtn")?.addEventListener("click", () => { localStorage.clear(); location.reload(); });
         document.getElementById("logoutAdminBtn")?.addEventListener("click", () => { adminLogged = false; renderAdminTools(); });
     }
-    
-    function normalizeSavedMetadataSource() {
+
+        function normalizeSavedMetadataSource() {
         try {
             const saved = localStorage.getItem(STORAGE.metadataSource);
             if (!saved) {
