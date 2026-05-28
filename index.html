@@ -207,37 +207,27 @@
     async function fetchMetadata() {
         let song = null;
         try {
-            if (metadataConfig.type === "icecast") {
-                const jsonUrl = `${metadataConfig.baseUrl}/status-json.xsl?_=${Date.now()}`;
-                const res = await fetch(jsonUrl);
-                if (res.ok) {
-                    const data = await res.json();
-                    const source = data.icestats?.source;
-                    const mount = Array.isArray(source) ? source[0] : source;
-                    if (mount && (mount.title || mount.artist)) {
-                        song = mount.title || mount.artist;
-                    }
-                }
-            } else {
-                const proxyUrl = "https://api.allorigins.win/raw?url=";
-                const target = `${metadataConfig.baseUrl}/7.html?_=${Date.now()}`;
-                const res = await fetch(proxyUrl + encodeURIComponent(target));
+            const res = await fetch((metadataConfig.baseUrl || "/api/metadata") + "?_ts=" + Date.now(), { cache: "no-store" });
+            if (res.ok) {
                 const text = await res.text();
-                const parts = text.trim().split(',');
-                if(parts.length >= 7) {
-                    song = parts.slice(6).join(',').trim();
-                }
+                song = text.trim();
             }
-        } catch(e) { console.warn("Metadata ophalen mislukt", e); }
-        
+        } catch(e) {
+            console.warn("Metadata ophalen mislukt", e);
+        }
+
         if (song && song !== currentSong) {
-            keywordSpotUsage = {};
             currentSong = song;
+            keywordSpotUsage = {};
             document.getElementById("liveSongTitle").innerHTML = currentSong;
-            document.getElementById("nowPlayingMeta").innerHTML = `🎵 ${currentSong.substring(0, 60)}`;
+            document.getElementById("nowPlayingMeta").innerHTML = currentSong.substring(0, 60);
             evaluateMidrollsFromSong(currentSong);
-        } else if (!song) {
-            document.getElementById("liveSongTitle").innerHTML = "⚠️ Metadata niet beschikbaar";
+        } else if (song) {
+            document.getElementById("liveSongTitle").innerHTML = currentSong;
+            document.getElementById("nowPlayingMeta").innerHTML = currentSong.substring(0, 60);
+        } else {
+            document.getElementById("liveSongTitle").innerHTML = "Metadata niet beschikbaar";
+            document.getElementById("nowPlayingMeta").innerHTML = "live metadata laden...";
         }
     }
     setInterval(fetchMetadata, 1000);
@@ -337,7 +327,7 @@
                     <label>Stream URL (direct of via proxy):</label><input type="text" id="streamUrlInput" value="${currentStreamUrl}" placeholder="http://server:8000/stream.mp3 of https://proxy.com/stream">
                     <label>Metadata basis URL (proxy):</label><input type="text" id="metaBaseUrl" value="${metadataConfig.baseUrl}" placeholder="/api/metadata">
                     <label>Metadata type:</label>
-                    <select id="metaType"><option value="shoutcast" ${metadataConfig.type==='shoutcast'?'selected':''}>Shoutcast (7.html)</option><option value="icecast" ${metadataConfig.type==='icecast'?'selected':''}>Icecast (status-json.xsl)</option></select>
+                    <select id="metaType"><option value="proxy" ${metadataConfig.type==="proxy"?"selected":""}>Plain text via proxy</option></select>
                     <div class="flex-row"><button id="saveStreamBtn" class="small-btn">💾 Opslaan & Testen</button></div>
                     <p class="warning">⚠️ Deze versie gebruikt een EdgeOne proxy zodat metadata kan werken zonder aanpassingen op de streamserver van de derde partij.</p>
                 </div>
