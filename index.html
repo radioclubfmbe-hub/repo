@@ -1,320 +1,696 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Versuz Radio</title>
-  <style>
-    :root{
-      --bg:#0c0f1a;
-      --bg2:#14182a;
-      --card:#0b0d16;
-      --line:#6e4b32;
-      --text:#f6f0eb;
-      --muted:#bdb8c9;
-      --accent:#f49b5a;
-      --pill:#22253a;
-      --blue:#6d8cff;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      background:linear-gradient(180deg,#0c0f1a,#0a0d17);
-      color:var(--text);
-      font-family:Inter,Arial,sans-serif;
-    }
-    header{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      padding:20px 28px 10px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-    }
-    .brand h1{
-      margin:0;
-      color:var(--accent);
-      font-size:32px;
-      letter-spacing:.02em;
-    }
-    .brand p{
-      margin:4px 0 0;
-      color:var(--muted);
-      font-size:14px;
-    }
-    nav{
-      display:flex;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-    nav a{
-      text-decoration:none;
-      color:var(--text);
-      background:#1a1d2d;
-      border:1px solid rgba(255,255,255,.1);
-      padding:16px 24px;
-      border-radius:999px;
-      font-weight:700;
-    }
-    .wrap{
-      padding:24px;
-    }
-    .hero{
-      border:1px solid var(--line);
-      border-radius:28px;
-      padding:24px;
-      background:rgba(0,0,0,.18);
-    }
-    .hero-top{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:20px;
-      flex-wrap:wrap;
-    }
-    .play-block{
-      display:flex;
-      flex-direction:column;
-      gap:18px;
-      min-width:260px;
-    }
-    .play-btn{
-      width:64px;
-      height:64px;
-      border:0;
-      border-radius:50%;
-      background:linear-gradient(180deg,#ff9c61,#e77948);
-      color:#fff;
-      font-size:26px;
-      cursor:pointer;
-      box-shadow:0 10px 25px rgba(231,121,72,.25);
-    }
-    .volume{
-      width:230px;
-    }
-    .center-pill,.status-pill,.program-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      border-radius:999px;
-      padding:12px 18px;
-      background:#07090f;
-      color:var(--text);
-      font-weight:700;
-    }
-    .meta-row{
-      margin-top:22px;
-      border-top:1px solid rgba(244,155,90,.25);
-      padding-top:18px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:20px;
-      flex-wrap:wrap;
-    }
-    .track{
-      font-size:18px;
-      font-weight:800;
-    }
-    .sub{
-      color:var(--muted);
-      font-size:14px;
-      margin-top:6px;
-    }
-    .now-playing{
-      margin-top:12px;
-      display:inline-flex;
-      gap:12px;
-      align-items:center;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:999px;
-      padding:12px 18px;
-      color:#fff;
-    }
-    .now-playing strong{
-      font-size:12px;
-      letter-spacing:.16em;
-      text-transform:uppercase;
-      color:#d4cedb;
-    }
-    .admin{
-      margin-top:48px;
-      background:#111423;
-      border-radius:28px;
-      padding:24px;
-    }
-    .admin h2{
-      margin:0 0 18px;
-      font-size:26px;
-    }
-    .panel-title{
-      font-size:18px;
-      font-weight:800;
-      margin-bottom:14px;
-    }
-    label{
-      display:block;
-      margin:14px 0 8px;
-      color:#f2edf9;
-      font-size:15px;
-    }
-    input,select{
-      width:100%;
-      border:1px solid rgba(255,255,255,.14);
-      background:#202437;
-      color:#fff;
-      padding:16px 18px;
-      border-radius:18px;
-      font-size:15px;
-    }
-    .save-btn{
-      margin-top:16px;
-      background:#6e6da6;
-      border:0;
-      color:#fff;
-      padding:14px 18px;
-      border-radius:999px;
-      font-weight:800;
-    }
-    .warn{
-      margin-top:10px;
-      color:#c7bba4;
-      font-size:14px;
-    }
-    @media (max-width: 900px){
-      header{flex-direction:column;gap:18px}
-      .hero-top,.meta-row{align-items:flex-start}
-      nav a{padding:12px 18px}
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="brand">
-      <h1>VERSUZ RADIO</h1>
-      <p>live • metadata • slimme ads • proxy ready</p>
-    </div>
+<script>
+const ADMINUSERNAME = "jasper.cool";
+const ADMINPASSWORD = "Appels54";
 
-    <nav>
-      <a href="#">🏠 HOME</a>
-      <a href="#">🗓️ PROGRAMMA'S</a>
-      <a href="#">📰 NIEUWS</a>
-      <a href="#">📞 CONTACT</a>
-      <a href="#">🔐 ADMIN</a>
-    </nav>
-  </header>
+const STORAGE = {
+    overrides: "versuzoverrides",
+    weeklySchedule: "versuzweeklyschedule",
+    news: "versuznews",
+    adRules: "versuzadrulesv3",
+    metaKeywordQuotas: "versuzmetaquotas",
+    streamUrl: "versuzstreamurl",
+    metadataSource: "versuzmetadatasource"
+};
 
-  <div class="wrap">
-    <section class="hero">
-      <div class="hero-top">
-        <div class="play-block">
-          <button class="play-btn" id="playBtn">▶</button>
-          <input class="volume" id="volume" type="range" min="0" max="1" step="0.05" value="0.85" />
+let defaultWeeklySchedule = [
+    { day: "Maandag", slots: [
+        { time: "06:00-10:00", title: "Morning Energy", desc: "Energieke start" },
+        { time: "10:00-14:00", title: "Workout Beats", desc: "Sportieve tunes" },
+        { time: "14:00-18:00", title: "Drive Time", desc: "Verkeer en hits" },
+        { time: "18:00-22:00", title: "Versuz Vibes", desc: "Club sound" },
+        { time: "22:00-00:00", title: "Late Night Selecta", desc: "" }
+    ]},
+    { day: "Dinsdag", slots: [
+        { time: "06:00-10:00", title: "Morning Energy", desc: "" },
+        { time: "10:00-14:00", title: "Non-stop werkdag", desc: "" },
+        { time: "14:00-18:00", title: "Versuz Choice", desc: "" },
+        { time: "18:00-22:00", title: "Future Hits", desc: "" },
+        { time: "22:00-00:00", title: "Midnight Mix", desc: "" }
+    ]},
+    { day: "Woensdag", slots: [
+        { time: "06:00-10:00", title: "Goeiemorgen Versuz", desc: "" },
+        { time: "10:00-14:00", title: "Fresh Wednesday", desc: "" },
+        { time: "14:00-18:00", title: "Back2Back", desc: "" },
+        { time: "18:00-22:00", title: "Dance Injection", desc: "" },
+        { time: "22:00-00:00", title: "Underground Sessions", desc: "" }
+    ]},
+    { day: "Donderdag", slots: [
+        { time: "06:00-10:00", title: "Wake Up!", desc: "" },
+        { time: "10:00-14:00", title: "Middagshow", desc: "" },
+        { time: "14:00-18:00", title: "Vintage Thursday", desc: "" },
+        { time: "18:00-22:00", title: "The Warm Up", desc: "" },
+        { time: "22:00-00:00", title: "Guest Mix", desc: "" }
+    ]},
+    { day: "Vrijdag", slots: [
+        { time: "06:00-10:00", title: "Vrijdag Ochtend", desc: "" },
+        { time: "10:00-14:00", title: "Frisse start", desc: "" },
+        { time: "14:00-18:00", title: "Weekend countdown", desc: "" },
+        { time: "18:00-22:00", title: "Versuz Friday Night", desc: "" },
+        { time: "22:00-01:00", title: "Club Versuz", desc: "" }
+    ]},
+    { day: "Zaterdag", slots: [
+        { time: "10:00-14:00", title: "Saturday Brunch", desc: "" },
+        { time: "14:00-18:00", title: "Ultimate Dance", desc: "" },
+        { time: "18:00-22:00", title: "Versuz Top 40", desc: "" },
+        { time: "22:00-02:00", title: "Weekend Massive", desc: "" }
+    ]},
+    { day: "Zondag", slots: [
+        { time: "10:00-14:00", title: "Relax Classics", desc: "" },
+        { time: "14:00-18:00", title: "Soulful Sunday", desc: "" },
+        { time: "18:00-22:00", title: "Retro Rewind", desc: "" },
+        { time: "22:00-00:00", title: "Chillout", desc: "" }
+    ]}
+];
+
+let weeklySchedule = [];
+let overrides = [];
+let newsArticles = [];
+let adRules = [];
+let metaKeywordQuotas = {};
+let adminLogged = false;
+let currentSong = "";
+let currentProgram = "Onbekend";
+let keywordSpotUsage = {};
+let currentStreamUrl = "https://212.84.160.3:11609/stream";
+let metadataConfig = { baseUrl: "/api/metadata", type: "proxy" };
+
+function loadAllData() {
+    weeklySchedule = JSON.parse(localStorage.getItem(STORAGE.weeklySchedule) || JSON.stringify(defaultWeeklySchedule));
+    overrides = JSON.parse(localStorage.getItem(STORAGE.overrides) || "[]");
+    newsArticles = JSON.parse(localStorage.getItem(STORAGE.news) || "[]");
+    adRules = JSON.parse(localStorage.getItem(STORAGE.adRules) || "[]");
+    metaKeywordQuotas = JSON.parse(localStorage.getItem(STORAGE.metaKeywordQuotas) || '{"adocount-":2,"headlines":3}');
+    currentStreamUrl = localStorage.getItem(STORAGE.streamUrl) || "https://212.84.160.3:11609/stream";
+
+    let savedMeta = localStorage.getItem(STORAGE.metadataSource);
+    if (savedMeta) {
+        metadataConfig = JSON.parse(savedMeta);
+    } else {
+        metadataConfig = { baseUrl: "/api/metadata", type: "proxy" };
+    }
+
+    if (!metadataConfig.baseUrl || metadataConfig.baseUrl.includes("212.84.160.3")) {
+        metadataConfig = { baseUrl: "/api/metadata", type: "proxy" };
+    }
+
+    if (!currentStreamUrl || currentStreamUrl.includes("85.215.152.155")) {
+        currentStreamUrl = "https://212.84.160.3:11609/stream";
+    }
+
+    if (newsArticles.length === 0) {
+        newsArticles = [
+            { id: "n1", title: "Versuz Radio 2 jaar!", content: "Speciale uitzending 15 juni met live dj’s.", date: "2026-05-20", imageData: "" },
+            { id: "n2", title: "Nieuwe programmadirecteur", content: "Kevin van den Berg zorgt voor frisse sound.", date: "2026-05-18", imageData: "" }
+        ];
+        saveNews();
+    }
+}
+
+function saveWeeklySchedule() { localStorage.setItem(STORAGE.weeklySchedule, JSON.stringify(weeklySchedule)); }
+function saveOverrides() { localStorage.setItem(STORAGE.overrides, JSON.stringify(overrides)); }
+function saveNews() { localStorage.setItem(STORAGE.news, JSON.stringify(newsArticles)); }
+function saveAdRules() { localStorage.setItem(STORAGE.adRules, JSON.stringify(adRules)); }
+function saveMetaQuotas() { localStorage.setItem(STORAGE.metaKeywordQuotas, JSON.stringify(metaKeywordQuotas)); }
+function saveStreamUrl(url) { localStorage.setItem(STORAGE.streamUrl, url); currentStreamUrl = url; }
+function saveMetadataConfig(config) { localStorage.setItem(STORAGE.metadataSource, JSON.stringify(config)); metadataConfig = config; }
+
+let mainAudio = new Audio();
+let adAudio = new Audio();
+let isPlaying = false, prerollDone = false, currentAdPlaying = false, resumeAfterAd = false;
+
+const playBtn = document.getElementById("playPauseBtn");
+const volumeSlider = document.getElementById("volumeCtrl");
+
+function setVolumeBoth() {
+    let vol = volumeSlider.value;
+    mainAudio.volume = vol;
+    adAudio.volume = vol;
+}
+volumeSlider.addEventListener("input", setVolumeBoth);
+setVolumeBoth();
+
+function updateStreamUrl() {
+    mainAudio.pause();
+    mainAudio.src = currentStreamUrl;
+    mainAudio.load();
+    if (isPlaying) mainAudio.play().catch(e => console.error("Stream error", e));
+}
+updateStreamUrl();
+
+function playMain() {
+    if (currentAdPlaying) return;
+    mainAudio.play().catch(e => console.error("Play error", e));
+    isPlaying = true;
+    playBtn.innerHTML = "⏸";
+}
+function pauseMain() {
+    mainAudio.pause();
+    isPlaying = false;
+    playBtn.innerHTML = "▶";
+}
+playBtn.addEventListener("click", () => {
+    if (isPlaying) pauseMain();
+    else if (!prerollDone) attemptPreroll();
+    else playMain();
+});
+
+function attemptPreroll() {
+    const now = new Date();
+    let eligible = adRules.filter(r =>
+        r.type === "preroll" && r.enabled && r.currentPlays < r.maxPlays &&
+        new Date(r.startDateTime) <= now && new Date(r.endDateTime) >= now
+    );
+    if (eligible.length && !currentAdPlaying) {
+        let ad = eligible[0];
+        ad.currentPlays++;
+        saveAdRules();
+        playAdAudio(ad.audioUrl, () => { prerollDone = true; playMain(); renderAdListUI(); });
+        return true;
+    }
+    prerollDone = true;
+    playMain();
+    return false;
+}
+
+function playAdAudio(url, onEnd) {
+    if (currentAdPlaying) return;
+    currentAdPlaying = true;
+    let wasPlaying = isPlaying;
+    if (wasPlaying) mainAudio.pause();
+    resumeAfterAd = true;
+    adAudio.src = url;
+    adAudio.play().catch(() => console.warn("Advertentie kon niet starten"));
+    adAudio.onended = () => {
+        currentAdPlaying = false;
+        if (resumeAfterAd && wasPlaying) playMain();
+        resumeAfterAd = false;
+        if (onEnd) onEnd();
+        adAudio.onended = null;
+    };
+}
+
+function evaluateMidrollsFromSong(songText) {
+    if (currentAdPlaying || !isPlaying) return;
+    const now = new Date();
+    let availableMidrolls = adRules.filter(r =>
+        r.type === "midroll" && r.enabled && r.currentPlays < r.maxPlays &&
+        new Date(r.startDateTime) <= now && new Date(r.endDateTime) >= now
+    );
+    if (!availableMidrolls.length) return;
+
+    let triggeredAd = null;
+    for (let ad of availableMidrolls) {
+        if (ad.triggerType === "metadata" && ad.triggerValue) {
+            let keyword = ad.triggerValue.toLowerCase();
+            if (songText.toLowerCase().includes(keyword)) {
+                let quota = metaKeywordQuotas[keyword] || 0;
+                let used = keywordSpotUsage[keyword] || 0;
+                if (quota === 0 || used < quota) {
+                    triggeredAd = ad;
+                    keywordSpotUsage[keyword] = used + 1;
+                    break;
+                }
+            }
+        } else if (ad.triggerType === "datetime" && ad.triggerValue) {
+            if (new Date(ad.triggerValue) <= now) {
+                triggeredAd = ad;
+                break;
+            }
+        }
+    }
+
+    if (triggeredAd) {
+        triggeredAd.currentPlays++;
+        saveAdRules();
+        playAdAudio(triggeredAd.audioUrl, renderAdListUI);
+    }
+}
+
+async function fetchMetadata() {
+    let song = null;
+
+    try {
+        const res = await fetch(metadataConfig.baseUrl + "?_ts=" + Date.now(), {
+            cache: "no-store"
+        });
+
+        if (res.ok) {
+            const text = await res.text();
+            song = text.trim();
+        }
+    } catch (e) {
+        console.warn("Metadata ophalen mislukt", e);
+    }
+
+    if (song && song !== currentSong) {
+        currentSong = song;
+        keywordSpotUsage = {};
+        document.getElementById("liveSongTitle").innerHTML = currentSong;
+        document.getElementById("nowPlayingMeta").innerHTML = currentSong.substring(0, 60);
+        evaluateMidrollsFromSong(currentSong);
+    } else if (!song) {
+        document.getElementById("liveSongTitle").innerHTML = "Metadata niet beschikbaar";
+        document.getElementById("nowPlayingMeta").innerHTML = "live metadata laden...";
+    }
+}
+setInterval(fetchMetadata, 1000);
+fetchMetadata();
+document.getElementById("refreshMetaBtn").addEventListener("click", fetchMetadata);
+
+function updateCurrentProgram() {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const weekdays = ["Zondag","Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag"];
+    let dayName = weekdays[now.getDay()];
+    let base = weeklySchedule.find(d => d.day === dayName);
+    if (!base) base = { slots: [] };
+
+    let slots = JSON.parse(JSON.stringify(base.slots));
+    const dayOverrides = overrides.filter(ov => ov.date === dateStr);
+    dayOverrides.forEach(ov => {
+        slots = slots.filter(s => !s.time.split("-")[0].includes(ov.startTime));
+        slots.push({ time: ov.startTime + "-" + ov.endTime, title: ov.programTitle, desc: ov.desc || "Vervanging" });
+    });
+
+    let currentTime = now.getHours() * 60 + now.getMinutes();
+    let activeSlot = slots.find(s => {
+        let [start, end] = s.time.split("-");
+        let startMin = parseInt(start.split(":")[0]) * 60 + parseInt(start.split(":")[1]);
+        let endMin = parseInt(end.split(":")[0]) * 60 + parseInt(end.split(":")[1]);
+        return currentTime >= startMin && currentTime < endMin;
+    });
+
+    currentProgram = activeSlot ? activeSlot.title : "Geen programma";
+    document.getElementById("currentProgramName").innerHTML = currentProgram;
+    setTimeout(updateCurrentProgram, 60000);
+}
+
+function renderSchedule(dateStr) {
+    if (!dateStr) return;
+    const weekdays = ["Zondag","Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag"];
+    let dayName = weekdays[new Date(dateStr).getDay()];
+    let base = weeklySchedule.find(d => d.day === dayName);
+    if (!base) base = { day: dayName, slots: [{ time: "Hele dag", title: "Geen programma", desc: "" }] };
+
+    let slots = JSON.parse(JSON.stringify(base.slots));
+    const dayOverrides = overrides.filter(ov => ov.date === dateStr);
+    dayOverrides.forEach(ov => {
+        slots = slots.filter(s => !s.time.split("-")[0].includes(ov.startTime) && !s.time.includes(ov.startTime));
+        slots.push({ time: ov.startTime + "-" + ov.endTime, title: ov.programTitle, desc: ov.desc || "Vervanging" });
+    });
+
+    slots.sort((a, b) => a.time.localeCompare(b.time));
+
+    let html = `<table><thead><tr><th>Tijd</th><th>Programma</th><th>Info</th></tr></thead><tbody>`;
+    slots.forEach(s => {
+        html += `<tr><td>${s.time}</td><td><strong>${s.title}</strong></td><td>${s.desc || ""}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+
+    document.getElementById("scheduleTableContainer").innerHTML = html;
+    document.getElementById("replacementBadge").innerHTML = dayOverrides.length ? `${dayOverrides.length} vervangingen` : "";
+}
+
+function renderNews() {
+    const homeDiv = document.getElementById("homeNewsPreview");
+    const fullDiv = document.getElementById("fullNewsList");
+
+    let newsHtml = newsArticles.map(n =>
+        `<div class="news-card" data-id="${n.id}"><h4>${n.title}</h4><p>${n.content.substring(0,80)}...</p><small>${n.date}</small>${n.imageData ? `<div>Afbeelding</div>` : ``}</div>`
+    ).join("");
+
+    if (homeDiv) {
+        homeDiv.innerHTML = newsArticles.slice(-3).reverse().map(n =>
+            `<div class="news-card" data-id="${n.id}"><h4>${n.title}</h4><p>${n.content.substring(0,70)}...</p></div>`
+        ).join("");
+    }
+
+    if (fullDiv) fullDiv.innerHTML = newsHtml;
+
+    document.querySelectorAll(".news-card").forEach(card => {
+        card.addEventListener("click", () => {
+            let id = card.getAttribute("data-id");
+            let article = newsArticles.find(a => a.id === id);
+            if (!article) return;
+            document.getElementById("modalTitle").innerText = article.title;
+            document.getElementById("modalContent").innerText = article.content;
+            document.getElementById("modalDate").innerText = article.date;
+            let imgDiv = document.getElementById("modalImage");
+            imgDiv.innerHTML = article.imageData ? `<img src="${article.imageData}" class="news-img">` : "";
+            document.getElementById("newsModal").classList.add("active");
+        });
+    });
+
+    const newsSelect = document.getElementById("newsSelectDelete");
+    if (newsSelect) newsSelect.innerHTML = newsArticles.map(n => `<option value="${n.id}">${n.title}</option>`).join("");
+    if (document.getElementById("newsCountAdmin")) document.getElementById("newsCountAdmin").innerText = newsArticles.length;
+}
+
+function renderAdminTools() {
+    const container = document.getElementById("adminProtectedArea");
+    if (!adminLogged) {
+        container.innerHTML = `
+            <div class="login-overlay">
+                <h3>Backoffice login</h3>
+                <input type="text" id="adminUsername" placeholder="Gebruikersnaam">
+                <input type="password" id="adminPassword" placeholder="Wachtwoord">
+                <button id="submitAdminLogin" class="small-btn">Inloggen</button>
+                <p class="warning">jasper.cool / Appels54</p>
+            </div>
+        `;
+        document.getElementById("submitAdminLogin")?.addEventListener("click", () => {
+            let user = document.getElementById("adminUsername").value;
+            let pwd = document.getElementById("adminPassword").value;
+            if (user === ADMINUSERNAME && pwd === ADMINPASSWORD) {
+                adminLogged = true;
+                renderAdminTools();
+            } else alert("Ongeldig");
+        });
+        return;
+    }
+
+    container.innerHTML = `
+        <h2>🛠️ Admin dashboard (ingelogd)</h2>
+
+        <div class="admin-form">
+            <h3>🎵 Stream & metadata bron</h3>
+            <label>Stream URL (direct of via proxy):</label>
+            <input type="text" id="streamUrlInput" value="${currentStreamUrl}" placeholder="https://server/stream">
+            <label>Metadata basis URL (proxy):</label>
+            <input type="text" id="metaBaseUrl" value="${metadataConfig.baseUrl}" placeholder="/api/metadata">
+            <label>Metadata type:</label>
+            <select id="metaType">
+                <option value="proxy" ${metadataConfig.type==="proxy"?"selected":""}>Plain text via proxy</option>
+            </select>
+            <div class="flex-row">
+                <button id="saveStreamBtn" class="small-btn">💾 Opslaan & Testen</button>
+            </div>
+            <p class="warning">Deze versie gebruikt een EdgeOne proxy zodat metadata kan werken zonder aanpassingen op de streamserver van de derde partij.</p>
         </div>
 
-        <div class="center-pill">🎵 🔁 <span id="status">live metadata laden...</span></div>
-
-        <div class="status-pill">📢 ads actief</div>
-      </div>
-
-      <div class="meta-row">
-        <div>
-          <div class="track">📼 Live track: <span id="liveTrack">Metadata laden...</span></div>
-          <div class="sub">🎧 Klik PLAY — metadata elke seconde via proxy.</div>
-          <div class="now-playing">
-            <strong>Now playing</strong>
-            <span id="currentSong">Metadata laden...</span>
-          </div>
+        <div class="admin-form">
+            <h3>Weekprogramma bewerken</h3>
+            <div id="weeklyScheduleEditor"></div>
+            <button id="saveWeeklyBtn" class="small-btn">Opslaan</button>
         </div>
 
-        <div class="program-pill">📺 Huidig programma: Vintage Thursday</div>
-      </div>
-    </section>
+        <div class="admin-form">
+            <h3>Vervangingen specifieke datum</h3>
+            <input type="date" id="ovDate">
+            <input type="text" id="ovStart" placeholder="Start vb 14:00">
+            <input type="text" id="ovEnd" placeholder="Eind">
+            <input type="text" id="ovTitle" placeholder="Programma">
+            <textarea id="ovDesc" rows="1"></textarea>
+            <button id="addOvBtn" class="small-btn">Toevoegen</button>
+            <div id="overrideListAdmin"></div>
+        </div>
 
-    <section class="admin">
-      <h2>🛠️ Admin dashboard (ingelogd)</h2>
-      <div class="panel-title">🎵 Stream & metadata bron</div>
+        <div class="admin-form">
+            <h3>Nieuws met afbeelding upload</h3>
+            <input type="text" id="newsTitleInput" placeholder="Titel">
+            <textarea id="newsContentInput" rows="2" placeholder="Inhoud"></textarea>
+            <input type="file" id="newsImageUpload" accept="image/*">
+            <div class="flex-row">
+                <button id="addNewsAdminBtn" class="small-btn">Toevoegen</button>
+                <select id="newsSelectDelete"></select>
+                <button id="delNewsBtn" class="small-btn">Verwijder</button>
+            </div>
+            <div id="newsCountAdmin"></div>
+        </div>
 
-      <label>Stream URL (direct of via proxy):</label>
-      <input type="text" value="https://212.84.160.3:11609/stream" readonly />
+        <div class="admin-form">
+            <h3>Advertenties preroll/midroll met telling & planning</h3>
+            <input type="text" id="adNameInput" placeholder="Naam">
+            <select id="adTypeSelect">
+                <option value="preroll">Preroll</option>
+                <option value="midroll">Midroll</option>
+            </select>
+            <input type="text" id="adUrlInput" placeholder="Audio URL mp3">
+            <input type="datetime-local" id="adStart">
+            <input type="datetime-local" id="adEnd">
+            <input type="number" id="adMaxPlays" placeholder="Max aantal keer" value="5">
+            <select id="triggerTypeSelect">
+                <option value="metadata">Metadata keyword</option>
+                <option value="datetime">Vaste datum/tijd</option>
+            </select>
+            <input type="text" id="triggerValInput" placeholder="Keyword of datum">
+            <button id="addAdRuleBtn" class="small-btn">Ad toevoegen</button>
+            <div id="adRulesListAdmin"></div>
+        </div>
 
-      <label>Metadata basis URL (proxy):</label>
-      <input type="text" value="/api/metadata" readonly />
+        <div class="admin-form">
+            <h3>Metadata quota per keyword</h3>
+            <textarea id="quotasEditor" rows="2">${JSON.stringify(metaKeywordQuotas, null, 2)}</textarea>
+            <button id="saveQuotasBtn" class="small-btn">Opslaan</button>
+        </div>
 
-      <label>Metadata type:</label>
-      <select disabled>
-        <option selected>Plain text via proxy</option>
-      </select>
+        <div class="admin-form">
+            <h3>Handmatige metadata fallback</h3>
+            <input type="text" id="manualMetaInput" placeholder="Titel artiest - nummer">
+            <button id="setManualMetaBtn" class="small-btn">Zet handmatig</button>
+        </div>
 
-      <button class="save-btn" type="button">💾 Opslaan & Testen</button>
-      <div class="warn">Deze versie gebruikt een EdgeOne proxy zodat metadata kan werken zonder aanpassingen op de streamserver van de derde partij.</div>
-    </section>
-  </div>
+        <button id="resetDemoBtn" class="small-btn" style="background:#7a2e2e">Reset alle data</button>
+        <button id="logoutAdminBtn" class="small-btn">Uitloggen</button>
+    `;
 
-  <audio id="radio" preload="none"></audio>
+    attachAdminEvents();
+    renderWeeklyEditor();
+    renderOverridesListUI();
+    renderAdListUI();
+    renderNews();
+}
 
-  <script>
-    (function () {
-      const STREAM_URL = "https://212.84.160.3:11609/stream";
-      const METADATA_URL = "/api/metadata";
-      const POLL_MS = 1000;
+function renderWeeklyEditor() {
+    let editorDiv = document.getElementById("weeklyScheduleEditor");
+    let html = "";
+    weeklySchedule.forEach((day, idx) => {
+        html += `<div style="border:1px solid #3f4560; border-radius:1rem; margin-bottom:1rem; padding:0.8rem"><h4>${day.day}</h4>`;
+        day.slots.forEach((slot, sidx) => {
+            html += `<div class="flex-row">
+                <input type="text" value="${slot.time}" placeholder="Tijd" data-day="${idx}" data-slot="${sidx}" data-field="time" style="width:120px">
+                <input type="text" value="${slot.title}" placeholder="Titel" data-day="${idx}" data-slot="${sidx}" data-field="title">
+                <input type="text" value="${slot.desc}" placeholder="Omschrijving" data-day="${idx}" data-slot="${sidx}" data-field="desc">
+                <button class="small-btn removeSlotBtn" data-day="${idx}" data-slot="${sidx}">X</button>
+            </div>`;
+        });
+        html += `<button class="small-btn addSlotBtn" data-day="${idx}">Tijdslot toevoegen</button></div>`;
+    });
+    editorDiv.innerHTML = html;
 
-      const audio = document.getElementById("radio");
-      const playBtn = document.getElementById("playBtn");
-      const volume = document.getElementById("volume");
-      const currentSong = document.getElementById("currentSong");
-      const liveTrack = document.getElementById("liveTrack");
-      const status = document.getElementById("status");
+    document.querySelectorAll("[data-field]").forEach(inp => inp.addEventListener("change", () => {
+        let day = parseInt(inp.dataset.day), slot = parseInt(inp.dataset.slot), field = inp.dataset.field;
+        weeklySchedule[day].slots[slot][field] = inp.value;
+        saveWeeklySchedule();
+    }));
 
-      audio.src = STREAM_URL;
-      audio.volume = parseFloat(volume.value);
+    document.querySelectorAll(".removeSlotBtn").forEach(btn => btn.addEventListener("click", () => {
+        let day = parseInt(btn.dataset.day), slot = parseInt(btn.dataset.slot);
+        weeklySchedule[day].slots.splice(slot, 1);
+        saveWeeklySchedule();
+        renderWeeklyEditor();
+        let currDate = document.getElementById("scheduleDate")?.value;
+        if (currDate) renderSchedule(currDate);
+    }));
 
-      volume.addEventListener("input", () => {
-        audio.volume = parseFloat(volume.value);
-      });
+    document.querySelectorAll(".addSlotBtn").forEach(btn => btn.addEventListener("click", () => {
+        let day = parseInt(btn.dataset.day);
+        weeklySchedule[day].slots.push({ time: "00:00-00:00", title: "Nieuw", desc: "" });
+        saveWeeklySchedule();
+        renderWeeklyEditor();
+    }));
+}
 
-      playBtn.addEventListener("click", async () => {
+function renderOverridesListUI() {
+    const listDiv = document.getElementById("overrideListAdmin");
+    if (!listDiv) return;
+    listDiv.innerHTML = overrides.map((o, idx) =>
+        `<div><b>${o.date} ${o.startTime}-${o.endTime}</b> ${o.programTitle} <button data-ovidx="${idx}" class="small-btn">X</button></div>`
+    ).join("");
+    document.querySelectorAll("[data-ovidx]").forEach(btn => btn.addEventListener("click", () => {
+        let i = parseInt(btn.getAttribute("data-ovidx"));
+        overrides.splice(i, 1);
+        saveOverrides();
+        renderOverridesListUI();
+        let d = document.getElementById("scheduleDate")?.value;
+        if (d) renderSchedule(d);
+    }));
+}
+
+function renderAdListUI() {
+    const container = document.getElementById("adRulesListAdmin");
+    if (!container) return;
+    container.innerHTML = adRules.map((r, i) =>
+        `<div style="border-left:3px solid #ff8855; margin:5px; padding:5px">
+            <b>${r.name}</b> ${r.type} • plays ${r.currentPlays}/${r.maxPlays} • geldig ${r.startDateTime} tot ${r.endDateTime}<br>
+            trigger: ${r.triggerType}:${r.triggerValue}<br>
+            ${String(r.audioUrl).substring(0,50)}
+            <button data-adidx="${i}" class="small-btn">verwijder</button>
+        </div>`
+    ).join("");
+    document.querySelectorAll("[data-adidx]").forEach(btn => btn.addEventListener("click", () => {
+        let idx = parseInt(btn.getAttribute("data-adidx"));
+        adRules.splice(idx, 1);
+        saveAdRules();
+        renderAdListUI();
+    }));
+}
+
+function attachAdminEvents() {
+    document.getElementById("saveStreamBtn")?.addEventListener("click", () => {
+        let newUrl = document.getElementById("streamUrlInput").value;
+        let newBase = document.getElementById("metaBaseUrl").value;
+        let newType = document.getElementById("metaType").value;
+        if (newUrl) saveStreamUrl(newUrl);
+        if (newBase) saveMetadataConfig({ baseUrl: newBase, type: newType });
+        updateStreamUrl();
+        fetchMetadata();
+        alert("Stream en metadata bron opgeslagen. Klik op play om te luisteren.");
+    });
+
+    document.getElementById("saveWeeklyBtn")?.addEventListener("click", () => {
+        saveWeeklySchedule();
+        alert("Weekprogramma opgeslagen");
+        let d = document.getElementById("scheduleDate")?.value;
+        if (d) renderSchedule(d);
+    });
+
+    document.getElementById("addOvBtn")?.addEventListener("click", () => {
+        let date = document.getElementById("ovDate").value;
+        let start = document.getElementById("ovStart").value;
+        let end = document.getElementById("ovEnd").value;
+        let title = document.getElementById("ovTitle").value;
+        let desc = document.getElementById("ovDesc").value;
+        if (!date || !start || !end || !title) return;
+        overrides.push({ date, startTime: start, endTime: end, programTitle: title, desc });
+        saveOverrides();
+        renderOverridesListUI();
+        let d = document.getElementById("scheduleDate")?.value;
+        if (d === date) renderSchedule(d);
+    });
+
+    document.getElementById("addNewsAdminBtn")?.addEventListener("click", () => {
+        let tit = document.getElementById("newsTitleInput").value;
+        let cont = document.getElementById("newsContentInput").value;
+        let file = document.getElementById("newsImageUpload").files[0];
+        if (!tit || !cont) return;
+        let addItem = imageData => {
+            newsArticles.push({
+                id: "n" + Date.now(),
+                title: tit,
+                content: cont,
+                date: new Date().toISOString().slice(0,10),
+                imageData: imageData || ""
+            });
+            saveNews();
+            renderNews();
+            renderAdminTools();
+        };
+        if (file) {
+            let reader = new FileReader();
+            reader.onload = e => addItem(e.target.result);
+            reader.readAsDataURL(file);
+        } else addItem("");
+    });
+
+    document.getElementById("delNewsBtn")?.addEventListener("click", () => {
+        let sel = document.getElementById("newsSelectDelete").value;
+        newsArticles = newsArticles.filter(n => n.id !== sel);
+        saveNews();
+        renderNews();
+        renderAdminTools();
+    });
+
+    document.getElementById("addAdRuleBtn")?.addEventListener("click", () => {
+        let name = document.getElementById("adNameInput").value;
+        let type = document.getElementById("adTypeSelect").value;
+        let url = document.getElementById("adUrlInput").value;
+        let start = document.getElementById("adStart").value;
+        let end = document.getElementById("adEnd").value;
+        let max = parseInt(document.getElementById("adMaxPlays").value);
+        let trigType = document.getElementById("triggerTypeSelect").value;
+        let trigVal = document.getElementById("triggerValInput").value;
+        if (!name || !url || !start || !end) return;
+        adRules.push({
+            id: "ad" + Date.now(),
+            name, type, audioUrl: url,
+            startDateTime: start, endDateTime: end,
+            maxPlays: max, currentPlays: 0, enabled: true,
+            triggerType: trigType, triggerValue: trigVal
+        });
+        saveAdRules();
+        renderAdListUI();
+    });
+
+    document.getElementById("saveQuotasBtn")?.addEventListener("click", () => {
         try {
-          if (audio.paused) {
-            await audio.play();
-            playBtn.textContent = "⏸";
-            status.textContent = "stream speelt";
-          } else {
-            audio.pause();
-            playBtn.textContent = "▶";
-            status.textContent = "stream gepauzeerd";
-          }
+            let q = JSON.parse(document.getElementById("quotasEditor").value);
+            metaKeywordQuotas = q;
+            saveMetaQuotas();
+            alert("Quota opgeslagen");
         } catch (e) {
-          status.textContent = "stream kon niet starten";
+            alert("Ongeldige JSON");
         }
-      });
+    });
 
-      function setSong(text) {
-        const value = String(text || "").trim() || "Metadata niet beschikbaar";
-        currentSong.textContent = value;
-        liveTrack.textContent = value;
-      }
-
-      async function refreshMetadata() {
-        try {
-          const res = await fetch(METADATA_URL + "?_ts=" + Date.now(), { cache: "no-store" });
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const text = await res.text();
-          setSong(text);
-          if (!audio.paused) {
-            status.textContent = "stream speelt • metadata live";
-          } else {
-            status.textContent = "metadata live";
-          }
-        } catch (e) {
-          setSong("Metadata niet beschikbaar");
-          status.textContent = "metadata proxy mislukt";
+    document.getElementById("setManualMetaBtn")?.addEventListener("click", () => {
+        let newMeta = document.getElementById("manualMetaInput").value;
+        if (newMeta) {
+            currentSong = newMeta;
+            keywordSpotUsage = {};
+            document.getElementById("liveSongTitle").innerHTML = currentSong;
+            document.getElementById("nowPlayingMeta").innerHTML = currentSong.substring(0, 60);
+            evaluateMidrollsFromSong(currentSong);
         }
-      }
+    });
 
-      refreshMetadata();
-      setInterval(refreshMetadata, POLL_MS);
-    })();
-  </script>
-</body>
-</html>
+    document.getElementById("resetDemoBtn")?.addEventListener("click", () => {
+        localStorage.clear();
+        location.reload();
+    });
+
+    document.getElementById("logoutAdminBtn")?.addEventListener("click", () => {
+        adminLogged = false;
+        renderAdminTools();
+    });
+}
+
+function init() {
+    loadAllData();
+
+    const datePicker = document.getElementById("scheduleDate");
+    if (datePicker) {
+        let today = new Date().toISOString().slice(0,10);
+        datePicker.value = today;
+        datePicker.addEventListener("change", () => renderSchedule(datePicker.value));
+        renderSchedule(today);
+    }
+
+    renderNews();
+    updateCurrentProgram();
+
+    document.querySelectorAll(".nav-btn").forEach(btn => btn.addEventListener("click", () => {
+        let panel = btn.getAttribute("data-panel");
+        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active-panel"));
+        document.getElementById(panel + "Panel").classList.add("active-panel");
+        document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        if (panel === "programs" && datePicker) renderSchedule(datePicker.value);
+        if (panel === "news") renderNews();
+        if (panel === "admin") renderAdminTools();
+    }));
+
+    document.getElementById("sendContactBtn")?.addEventListener("click", () => {
+        let naam = document.getElementById("contactNameInput").value;
+        let msg = document.getElementById("contactMsgInput").value;
+        document.getElementById("contactFeedback").innerText = (naam && msg) ? `Bedankt ${naam}!` : "Vul alles in";
+    });
+
+    document.querySelector(".close-modal")?.addEventListener("click", () => {
+        document.getElementById("newsModal").classList.remove("active");
+    });
+
+    renderAdminTools();
+}
+init();
+</script>
